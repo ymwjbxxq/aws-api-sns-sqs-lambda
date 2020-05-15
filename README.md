@@ -2,7 +2,7 @@
 
 This example show you how to setup few serverless components.
 
-![picture](diagram.png)
+![picture](https://bitbucket.org/DanBranch/api-sns-sqs-lambda/downloads/diagram.png)
 
 ### User Case ###
 
