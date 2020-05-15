@@ -1,29 +1,13 @@
-# README #
+# API Gateway + SNS + SQS + Lambda #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+This example show you how to setup few serverless components.
 
-### What is this repository for? ###
+![picture](diagram.png)
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+### User Case ###
 
-### How do I get set up? ###
+Well there a many of them :)
+If you have an api and you want to fanout the request to have parallel asynchronous processing, you could subscribe the SNS topic to a SQS queue(s) or HTTP endpoint(s) etc.
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+In this example we subscribe with SQS queue for reliability and later on process it with a Lambda.
 
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
