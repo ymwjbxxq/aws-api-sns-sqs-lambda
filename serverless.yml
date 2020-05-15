@@ -1,0 +1,147 @@
+service: my-api
+
+provider:
+  name: aws
+  endpointType: REGIONAL
+  region: ${opt:region, 'eu-central-1'}
+  runtime: nodejs12.x
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "sqs:ReceiveMessage"
+        - "sqs:SendMessage"
+      Resource:
+         - "*"
+    - Effect: "Allow"
+      Action:
+        - "logs:CreateLogGroup"
+        - "logs:CreateLogStream"
+        - "logs:PutLogEvents"
+      Resource:
+        - "*"
+    - Effect: "Allow"
+      Action:
+        - "sns:Publish"
+        - "sns:Subscribe"
+      Resource:
+        - "*"
+
+custom:
+  apiKeys:
+    - name: myKey
+      usagePlan:
+        name: "my-usage-plan"
+        quota:
+          limit: 1000
+          period: DAY
+        throttle:
+          burstLimit: 100
+          rateLimit: 500
+
+  customDomain:
+    domainName: mydomain.com
+    basePath: 'my-service'
+    createRoute53Record: true
+    endpointType: regional
+  serverless-iam-roles-per-function:
+    defaultInherit: true
+
+  apiGatewayServiceProxies:
+    - sns:
+        path: /v1/feedback
+        method: post
+        topicName: mySnsTopicName
+        cors: true
+        private: true
+
+package:
+  individually: true
+  exclude:
+    - ./**
+    
+functions:
+  mySuperLambda:
+    runtime: nodejs12.x
+    handler: mySuperLambda.handler
+    package:
+      include:
+        - mySuperLambda.js
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - FeedbackQueue
+              - Arn
+
+resources:
+  Resources:
+    MySnsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: mySnsTopicName
+        Tags:
+          -
+            Key: Name
+            Value: mySnsTopicName
+        Subscription:
+          - Endpoint:
+              Fn::GetAtt:
+                - MyQueue
+                - Arn
+            Protocol: "SQS"
+
+    MyQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: myQueueName
+        Tags:
+          -
+            Key: Name
+            Value: myQueueName
+        VisibilityTimeout: 180
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+              - MyQueueDeadQueue
+              - Arn
+          maxReceiveCount: 2
+
+    MyQueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - Ref: MyQueue
+        PolicyDocument:
+          Version: "2012-10-17"
+          Id: "MyQueuePolicy"
+          Statement:
+            - Sid: SNS
+              Effect: Allow
+              Principal: "*"
+              Resource:
+                Fn::GetAtt:
+                  - MyQueue
+                  - Arn
+              Action:
+                - sqs:SendMessage
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Ref MySnsTopic
+
+    MyQueueDeadQueue:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: myQueueDeadName
+
+  Outputs:
+    MySnsTopic:
+      Value: !Ref MySnsTopic
+
+plugins:
+  - serverless-stage-manager
+  - serverless-pseudo-parameters
+  - serverless-domain-manager
+  - serverless-iam-roles-per-function
+  - serverless-plugin-stage-variables
+  - serverless-add-api-key
+  - serverless-apigateway-service-proxy
